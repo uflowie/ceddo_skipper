@@ -106,7 +106,14 @@ function checkForTargetColor() {
 
     try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Only check bottom right cell of 3x2 grid
+        const startX = Math.floor((canvas.width * 2) / 3);
+        const startY = Math.floor(canvas.height / 2);
+        const width = canvas.width - startX;
+        const height = canvas.height - startY;
+
+        const imageData = ctx.getImageData(startX, startY, width, height);
         const pixels = imageData.data;
 
         let closeMatches = 0;
@@ -138,7 +145,7 @@ function skipVideoAhead() {
     const video = document.querySelector('video');
     if (!video) return;
 
-    video.currentTime += 0.5;
+    video.currentTime += 0.2;
     console.log(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
 }
 
