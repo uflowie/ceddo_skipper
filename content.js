@@ -71,6 +71,28 @@ function isVideoPlayingAndExists() {
     return !video.paused && !video.ended && video.readyState > 2;
 }
 
+function isVideoBuffering() {
+    const video = document.querySelector('video');
+    if (!video) return false;
+
+    // Check if video is waiting or seeking
+    if (video.readyState < 3) return true;
+
+    return false;
+
+    // // Check if current time is beyond buffered data
+    // const buffered = video.buffered;
+    // if (buffered.length === 0) return true;
+
+    // for (let i = 0; i < buffered.length; i++) {
+    //     if (video.currentTime >= buffered.start(i) && video.currentTime <= buffered.end(i)) {
+    //         return false;
+    //     }
+    // }
+
+    // return true;
+}
+
 function checkForTargetColor() {
     const targetColor = { r: 0, g: 157, b: 239 };
     const video = document.querySelector('video');
@@ -120,7 +142,7 @@ function skipVideoAhead() {
     console.log(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
 }
 
-function runCeddoSkipper() {
+async function runCeddoSkipper() {
     // 1) Check if we are currently watching a video of ceddo
     if (!isCeddoPage()) {
         return;
@@ -135,28 +157,24 @@ function runCeddoSkipper() {
     if (checkForTargetColor()) {
         console.log('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
 
-        // 4) Skip the video ahead by 0.5 seconds until we have 1000+ close matches or video is over
-        const skipInterval = setInterval(() => {
-            const video = document.querySelector('video');
-            if (!video || video.ended || video.currentTime >= video.duration) {
-                clearInterval(skipInterval);
-                console.log('[Ceddo Skipper]: Video ended or reached end');
-                return;
+        // Skip ahead until we have 1000+ close matches or video ends
+        const video = document.querySelector('video');
+        while (video && !video.ended && video.currentTime < video.duration && checkForTargetColor()) {
+            // Don't skip if video is buffering
+            if (isVideoBuffering()) {
+                console.log('[Ceddo Skipper]: Video is buffering, waiting...');
+                break;
             }
 
             skipVideoAhead();
+        }
 
-            // Check if we still need to skip
-            if (!checkForTargetColor()) {
-                clearInterval(skipInterval);
-                console.log('[Ceddo Skipper]: 1000+ close matches detected, stopping skip');
-            }
-        }, 500);
+        console.log('[Ceddo Skipper]: Finished skipping');
     }
 }
 
 // Run the algorithm every 0.1 seconds
-setInterval(runCeddoSkipper, 100);
+setInterval(runCeddoSkipper, 1);
 
 window.checkVideoForColor = checkVideoForColor;
 window.checkPage = checkPage;
