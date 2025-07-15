@@ -77,13 +77,19 @@ function isVideoBuffering() {
 }
 
 function firstDatesIsPlaying() {
+    const startTime = performance.now();
+    
     // light blue ish color that is used in the border surrounding ceddo's portrait
     // if this color is present in the video, it means that ceddo is NOT full screen 
     // and the actual content we are interested in is playing
     const targetColor = { r: 0, g: 157, b: 239 };
 
     const video = document.querySelector('video');
-    if (!video) return false;
+    if (!video) {
+        const endTime = performance.now();
+        console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+        return false;
+    }
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -117,13 +123,28 @@ function firstDatesIsPlaying() {
 
             if (rDiff <= 20 && gDiff <= 20 && bDiff <= 20) {
                 closeMatches++;
+                
+                // Early return once we have enough matches
+                if (closeMatches >= 1000) {
+                    const endTime = performance.now();
+                    console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}+ (early termination)`);
+                    console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+                    return true;
+                }
             }
         }
 
         console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
-        return closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
+        const result = closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
+        
+        const endTime = performance.now();
+        console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+        
+        return result;
     } catch (error) {
         console.log('[Ceddo Skipper]: Error checking video frame:', error);
+        const endTime = performance.now();
+        console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
         return false;
     }
 }
