@@ -73,28 +73,15 @@ function isVideoPlayingAndExists() {
 
 function isVideoBuffering() {
     const video = document.querySelector('video');
-    if (!video) return false;
-
-    // Check if video is waiting or seeking
-    if (video.readyState < 3) return true;
-
-    return false;
-
-    // // Check if current time is beyond buffered data
-    // const buffered = video.buffered;
-    // if (buffered.length === 0) return true;
-
-    // for (let i = 0; i < buffered.length; i++) {
-    //     if (video.currentTime >= buffered.start(i) && video.currentTime <= buffered.end(i)) {
-    //         return false;
-    //     }
-    // }
-
-    // return true;
+    return video && video.readyState < 3;
 }
 
-function checkForTargetColor() {
-    const targetColor = { r: 0, g: 157, b: 239 };
+function firstDatesIsPlaying() {
+    // light blue ish color that is used in the border surrounding ceddo's portrait
+    // if this color is present in the video, it means that ceddo is NOT full screen 
+    // and the actual content we are interested in is playing
+    const targetColor = { r: 0, g: 157, b: 239 }; 
+    
     const video = document.querySelector('video');
     if (!video) return false;
 
@@ -107,7 +94,7 @@ function checkForTargetColor() {
     try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Only check bottom right cell of 3x2 grid
+        // Only check bottom right cell of 3x2 grid - this is where we expect the ceddo portrait to be
         const startX = Math.floor((canvas.width * 2) / 3);
         const startY = Math.floor(canvas.height / 2);
         const width = canvas.width - startX;
@@ -134,7 +121,7 @@ function checkForTargetColor() {
         }
 
         console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
-        return closeMatches < 1000;
+        return closeMatches < 1000; // at most resolutions, this is less pixels than the ceddo portrait border
     } catch (error) {
         console.log('[Ceddo Skipper]: Error checking video frame:', error);
         return false;
@@ -150,24 +137,20 @@ function skipVideoAhead() {
 }
 
 async function runCeddoSkipper() {
-    // 1) Check if we are currently watching a video of ceddo
     if (!isCeddoPage()) {
         return;
     }
 
-    // 2) Check if the video exists and is playing
     if (!isVideoPlayingAndExists()) {
         return;
     }
 
-    // 3) Check if there are LESS than 1000 close matches to the target color
-    if (checkForTargetColor()) {
+    if (firstDatesIsPlaying()) {
         console.log('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
 
         // Skip ahead until we have 1000+ close matches or video ends
         const video = document.querySelector('video');
-        while (video && !video.ended && video.currentTime < video.duration && checkForTargetColor()) {
-            // Don't skip if video is buffering
+        while (video && !video.ended && video.currentTime < video.duration && firstDatesIsPlaying()) {
             if (isVideoBuffering()) {
                 console.log('[Ceddo Skipper]: Video is buffering, waiting...');
                 break;
@@ -180,8 +163,8 @@ async function runCeddoSkipper() {
     }
 }
 
-// Run the algorithm every 0.1 seconds
-setInterval(runCeddoSkipper, 1);
-
-window.checkVideoForColor = checkVideoForColor;
-window.checkPage = checkPage;
+function checkVideoLoop() {
+    runCeddoSkipper();
+    requestAnimationFrame(checkVideoLoop);
+}
+requestAnimationFrame(checkVideoLoop);
