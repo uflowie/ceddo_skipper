@@ -80,8 +80,8 @@ function firstDatesIsPlaying() {
     // light blue ish color that is used in the border surrounding ceddo's portrait
     // if this color is present in the video, it means that ceddo is NOT full screen 
     // and the actual content we are interested in is playing
-    const targetColor = { r: 0, g: 157, b: 239 }; 
-    
+    const targetColor = { r: 0, g: 157, b: 239 };
+
     const video = document.querySelector('video');
     if (!video) return false;
 
@@ -121,7 +121,7 @@ function firstDatesIsPlaying() {
         }
 
         console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
-        return closeMatches < 1000; // at most resolutions, this is less pixels than the ceddo portrait border
+        return closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
     } catch (error) {
         console.log('[Ceddo Skipper]: Error checking video frame:', error);
         return false;
@@ -132,7 +132,7 @@ function skipVideoAhead() {
     const video = document.querySelector('video');
     if (!video) return;
 
-    video.currentTime += 0.2;
+    video.currentTime += 1;
     console.log(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
 }
 
@@ -145,21 +145,11 @@ async function runCeddoSkipper() {
         return;
     }
 
-    if (firstDatesIsPlaying()) {
+    const video = document.querySelector('video');
+
+    if (!firstDatesIsPlaying() && !isVideoBuffering() && !video.ended && video.currentTime < video.duration) {
         console.log('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
-
-        // Skip ahead until we have 1000+ close matches or video ends
-        const video = document.querySelector('video');
-        while (video && !video.ended && video.currentTime < video.duration && firstDatesIsPlaying()) {
-            if (isVideoBuffering()) {
-                console.log('[Ceddo Skipper]: Video is buffering, waiting...');
-                break;
-            }
-
-            skipVideoAhead();
-        }
-
-        console.log('[Ceddo Skipper]: Finished skipping');
+        skipVideoAhead();
     }
 }
 
