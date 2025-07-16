@@ -126,18 +126,51 @@ async function runCeddoSkipper() {
     }
 }
 
+let currentVideo = null;
+
+function startVideoMonitoring() {
+    const video = document.querySelector('video');
+    if (video && video !== currentVideo) {
+        currentVideo = video;
+        video.requestVideoFrameCallback(checkVideoLoop);
+    }
+}
+
 function checkVideoLoop() {
     runCeddoSkipper();
     const video = document.querySelector('video');
-    if (video) {
+    if (video && video === currentVideo) {
         video.requestVideoFrameCallback(checkVideoLoop);
     } else {
-        requestAnimationFrame(checkVideoLoop);
+        currentVideo = null;
+        startVideoMonitoring();
     }
 }
-const video = document.querySelector('video');
-if (video) {
-    video.requestVideoFrameCallback(checkVideoLoop);
-} else {
-    requestAnimationFrame(checkVideoLoop);
+
+// Use MutationObserver to watch for video elements
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.tagName === 'VIDEO' || node.querySelector('video')) {
+                        startVideoMonitoring();
+                    }
+                }
+            });
+        }
+    });
+});
+
+// Start observing when DOM is ready
+function initializeObserver() {
+    if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+        startVideoMonitoring(); // Check for existing video
+    } else {
+        // If body doesn't exist yet, wait for it
+        setTimeout(initializeObserver, 100);
+    }
 }
+
+initializeObserver();
