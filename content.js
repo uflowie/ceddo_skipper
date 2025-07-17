@@ -64,7 +64,7 @@ function createHiddenAnalysisVideo(videoSrc) {
         try {
             const iframeVideo = iframe.contentDocument?.querySelector('video');
             if (iframeVideo) {
-                iframeVideo.playbackRate = 4; // Speed up analysis
+                iframeVideo.playbackRate = 16; // Speed up analysis
                 iframeVideo.requestVideoFrameCallback(analyzeVideoLoop);
                 console.log('[Ceddo Skipper]: Analysis loop started');
             }
@@ -113,9 +113,20 @@ function analyzeVideoLoop() {
             }
         }
 
+        // we can't directly check for the end of the video, because on the last frameCallback,
+        // the video will not have ended, we therefore use this heuristic to close the last
+        // interval of the video
+        const isNearEnd = iframeVideo.duration && (currentTime >= iframeVideo.duration - 1);
+
         // Continue analysis
-        if (iframeVideo && !iframeVideo.ended) {
+        if (iframeVideo && !iframeVideo.ended && !isNearEnd) {
             iframeVideo.requestVideoFrameCallback(analyzeVideoLoop);
+        } else {
+            if (currentSkipInterval) {
+                currentSkipInterval.end = iframeVideo.duration || currentTime;
+                console.log(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
+                currentSkipInterval = null;
+            }
         }
     } catch (error) {
         console.log('[Ceddo Skipper]: Error in analyzeVideoLoop:', error);
@@ -144,7 +155,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
+
     if (enableTiming) {
         const canvasEndTime = performance.now();
         console.log(`[Ceddo Skipper]: Canvas creation: ${(canvasEndTime - canvasStartTime).toFixed(2)}ms`);
@@ -153,7 +164,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
     try {
         const drawStartTime = enableTiming ? performance.now() : null;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         if (enableTiming) {
             const drawEndTime = performance.now();
             console.log(`[Ceddo Skipper]: Video drawing: ${(drawEndTime - drawStartTime).toFixed(2)}ms`);
@@ -168,7 +179,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
         const imageDataStartTime = enableTiming ? performance.now() : null;
         const imageData = ctx.getImageData(startX, startY, width, height);
         const pixels = imageData.data;
-        
+
         if (enableTiming) {
             const imageDataEndTime = performance.now();
             console.log(`[Ceddo Skipper]: Image data extraction: ${(imageDataEndTime - imageDataStartTime).toFixed(2)}ms`);
@@ -203,13 +214,13 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
                 }
             }
         }
-        
+
         if (enableTiming) {
             const pixelProcessingEndTime = performance.now();
             console.log(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
             console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
         }
-        
+
         const result = closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
 
         if (enableTiming) {
