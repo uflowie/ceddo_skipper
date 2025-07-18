@@ -16,7 +16,7 @@ function isVideoBuffering() {
 
 function firstDatesIsPlaying() {
     const video = document.querySelector('video');
-    return firstDatesIsPlayingForVideo(video, true);
+    return firstDatesIsPlayingForVideo(video, false);
 }
 
 function skipVideoAhead() {
@@ -24,7 +24,7 @@ function skipVideoAhead() {
     if (!video) return;
 
     video.currentTime += 1;
-    console.log(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
+    console.debug(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
 }
 
 function createHiddenAnalysisVideo(videoSrc) {
@@ -35,7 +35,7 @@ function createHiddenAnalysisVideo(videoSrc) {
     // Extract video ID from YouTube URL
     const videoId = extractYouTubeVideoId(window.location.href);
     if (!videoId) {
-        console.log('[Ceddo Skipper]: Could not extract video ID from URL');
+        console.debug('[Ceddo Skipper]: Could not extract video ID from URL');
         return;
     }
 
@@ -66,14 +66,14 @@ function createHiddenAnalysisVideo(videoSrc) {
             if (iframeVideo) {
                 iframeVideo.playbackRate = 16; // Speed up analysis
                 iframeVideo.requestVideoFrameCallback(analyzeVideoLoop);
-                console.log('[Ceddo Skipper]: Analysis loop started');
+                console.debug('[Ceddo Skipper]: Analysis loop started');
             }
         } catch (error) {
-            console.log('[Ceddo Skipper]: Error starting analysis loop:', error);
+            console.debug('[Ceddo Skipper]: Error starting analysis loop:', error);
         }
     };
 
-    console.log(`[Ceddo Skipper]: Hidden analysis video created for video ID: ${videoId}`);
+    console.debug(`[Ceddo Skipper]: Hidden analysis video created for video ID: ${videoId}`);
 }
 
 function extractYouTubeVideoId(url) {
@@ -89,7 +89,7 @@ function analyzeVideoLoop() {
         // Access video element inside iframe
         const iframeVideo = hiddenAnalysisVideo.contentDocument?.querySelector('video');
         if (!iframeVideo) {
-            console.log('[Ceddo Skipper]: Could not access video in iframe');
+            console.debug('[Ceddo Skipper]: Could not access video in iframe');
             return;
         }
 
@@ -101,14 +101,14 @@ function analyzeVideoLoop() {
             if (!currentSkipInterval) {
                 currentSkipInterval = { start: currentTime, end: undefined };
                 skipIntervals.push(currentSkipInterval);
-                console.log(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
+                console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
             }
             // If we already have a current interval, just continue (no action needed)
         } else {
             // End current interval if we have one
             if (currentSkipInterval) {
                 currentSkipInterval.end = currentTime;
-                console.log(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
+                console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
                 currentSkipInterval = null;
             }
         }
@@ -124,12 +124,12 @@ function analyzeVideoLoop() {
         } else {
             if (currentSkipInterval) {
                 currentSkipInterval.end = iframeVideo.duration || currentTime;
-                console.log(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
+                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
                 currentSkipInterval = null;
             }
         }
     } catch (error) {
-        console.log('[Ceddo Skipper]: Error in analyzeVideoLoop:', error);
+        console.debug('[Ceddo Skipper]: Error in analyzeVideoLoop:', error);
     }
 }
 
@@ -144,7 +144,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
     if (!video) {
         if (enableTiming) {
             const endTime = performance.now();
-            console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
         }
         return false;
     }
@@ -158,7 +158,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
 
     if (enableTiming) {
         const canvasEndTime = performance.now();
-        console.log(`[Ceddo Skipper]: Canvas creation: ${(canvasEndTime - canvasStartTime).toFixed(2)}ms`);
+        console.debug(`[Ceddo Skipper]: Canvas creation: ${(canvasEndTime - canvasStartTime).toFixed(2)}ms`);
     }
 
     try {
@@ -167,7 +167,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
 
         if (enableTiming) {
             const drawEndTime = performance.now();
-            console.log(`[Ceddo Skipper]: Video drawing: ${(drawEndTime - drawStartTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: Video drawing: ${(drawEndTime - drawStartTime).toFixed(2)}ms`);
         }
 
         // Only check bottom right cell of 3x2 grid - this is where we expect the ceddo portrait to be
@@ -182,7 +182,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
 
         if (enableTiming) {
             const imageDataEndTime = performance.now();
-            console.log(`[Ceddo Skipper]: Image data extraction: ${(imageDataEndTime - imageDataStartTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: Image data extraction: ${(imageDataEndTime - imageDataStartTime).toFixed(2)}ms`);
         }
 
         let closeMatches = 0;
@@ -205,10 +205,10 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
                 if (closeMatches >= 1000) {
                     if (enableTiming) {
                         const pixelProcessingEndTime = performance.now();
-                        console.log(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
+                        console.debug(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
                         const endTime = performance.now();
-                        console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}+ (early termination)`);
-                        console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+                        console.debug(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}+ (early termination)`);
+                        console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
                     }
                     return true;
                 }
@@ -217,23 +217,23 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
 
         if (enableTiming) {
             const pixelProcessingEndTime = performance.now();
-            console.log(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
-            console.log(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
+            console.debug(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
         }
 
         const result = closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
 
         if (enableTiming) {
             const endTime = performance.now();
-            console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
         }
 
         return result;
     } catch (error) {
-        console.log('[Ceddo Skipper]: Error checking video frame:', error);
+        console.debug('[Ceddo Skipper]: Error checking video frame:', error);
         if (enableTiming) {
             const endTime = performance.now();
-            console.log(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
+            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
         }
         return false;
     }
@@ -259,14 +259,14 @@ async function runCeddoSkipper() {
     // First check if we should skip based on pre-analyzed intervals
     const skipInterval = shouldSkipBasedOnCache(video.currentTime);
     if (skipInterval) {
-        console.log(`[Ceddo Skipper]: Skipping from ${video.currentTime}s to ${skipInterval.end}s based on cached interval`);
+        console.debug(`[Ceddo Skipper]: Skipping from ${video.currentTime}s to ${skipInterval.end}s based on cached interval`);
         video.currentTime = skipInterval.end;
         return;
     }
 
     // Fall back to real-time analysis if no cached data
     if (!firstDatesIsPlaying() && !isVideoBuffering() && !video.ended && video.currentTime < video.duration) {
-        console.log('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
+        console.debug('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
         skipVideoAhead();
     }
 }
@@ -304,30 +304,15 @@ function checkVideoLoop() {
     }
 }
 
-// Use MutationObserver to watch for video elements
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (node.tagName === 'VIDEO' || node.querySelector('video')) {
-                        startVideoMonitoring();
-                    }
-                }
-            });
+        if (mutation.type === 'attributes' && mutation.target.tagName === 'VIDEO') {
+            console.log('[Ceddo Skipper]: Video attributes changed ' + mutation.attributeName + ', restarting monitoring...');
+            console.log('[Ceddo Skipper]: Current video source: ' + mutation.target.src);
+            startVideoMonitoring();
         }
     });
 });
 
-// Start observing when DOM is ready
-function initializeObserver() {
-    if (document.body) {
-        observer.observe(document.body, { childList: true, subtree: true });
-        startVideoMonitoring(); // Check for existing video
-    } else {
-        // If body doesn't exist yet, wait for it
-        setTimeout(initializeObserver, 100);
-    }
-}
-
-initializeObserver();
+console.log("[Ceddo Skipper]: attaching observer");
+observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['src'] })
