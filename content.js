@@ -1,8 +1,3 @@
-function isCeddoPage() {
-    const dailyCeddoLink = document.querySelector('a[href="/@dailyceddo"]');
-    return dailyCeddoLink !== null;
-}
-
 function extractYouTubeVideoId(url) {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
@@ -131,7 +126,7 @@ function runSkipper(video) {
             return;
         }
 
-        if (video.paused || video.ended || video.readyState < 3 || !isCeddoPage()) {
+        if (video.paused || video.ended || video.readyState < 3) {
             video.requestVideoFrameCallback(mainVideoFrameCallback);
             return;
         }
@@ -166,7 +161,7 @@ function runSkipper(video) {
         let currentSkipInterval = null;
 
         const skipAheadVideoFrameCallback = () => {
-            if (originalSrc !== video.src) {
+            if (originalSrc !== video.src || video.ended) {
                 iframe.remove();
                 return;
             }
@@ -206,15 +201,13 @@ function runSkipper(video) {
     }
 }
 
-
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.target.tagName === 'VIDEO' && mutation.oldValue == null) {
-            // we check for oldValue == null, because the src is set to null before setting it to the new source when navigating to a different way
-            // this way we avoid registering the skipper twice, as the mutationobserver fires for both events
-            runSkipper(mutation.target);
-        }
-    });
-});
-
-observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['src'], attributeOldValue: true })
+window.addEventListener('yt-page-data-fetched', ev => {
+    // this event fires slightly after the video starts playing. we still choose to wait for this, because this is the most reliable
+    // way to get the channelId. we initially tried getting the current channel from the DOM but this ended up being out of 
+    // sync with the playing video sometimes.
+    const channelId = ev.detail?.pageData?.playerResponse?.videoDetails?.channelId;
+    if (channelId === "UC-QOcOL01vuShdAk01YzDmw") {
+        const video = document.querySelector("video");
+        runSkipper(video);
+    }
+}, true)
