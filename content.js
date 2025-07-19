@@ -3,134 +3,15 @@ function isCeddoPage() {
     return dailyCeddoLink !== null;
 }
 
-function isVideoPlayingAndExists() {
-    const video = document.querySelector('video');
-    if (!video) return false;
-    return !video.paused && !video.ended && video.readyState > 2;
-}
-
-function isVideoBuffering() {
-    const video = document.querySelector('video');
-    return video && video.readyState < 3;
-}
-
-function firstDatesIsPlaying() {
-    const video = document.querySelector('video');
-    return firstDatesIsPlayingForVideo(video, false);
-}
-
-function skipVideoAhead() {
-    const video = document.querySelector('video');
-    if (!video) return;
-
-    video.currentTime += 1;
-    console.debug(`[Ceddo Skipper]: Skipped video to ${video.currentTime}s`);
-}
-
-function createHiddenAnalysisVideo(videoSrc) {
-    if (hiddenAnalysisVideo) {
-        hiddenAnalysisVideo.remove();
-    }
-
-    // Extract video ID from YouTube URL
-    const videoId = extractYouTubeVideoId(window.location.href);
-    if (!videoId) {
-        console.debug('[Ceddo Skipper]: Could not extract video ID from URL');
-        return;
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.top = '10px';
-    iframe.style.right = '10px';
-    iframe.style.width = '256px';
-    iframe.style.height = '144px';
-    iframe.style.border = '2px solid red';
-    iframe.style.zIndex = '9999';
-    iframe.style.backgroundColor = 'black';
-
-    iframe.referrerPolicy = 'strict-origin' // omitting this causes the iframe not to load
-
-
-    // Use YouTube embed URL
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
-    // iframe.allow = 'autoplay';
-
-    document.body.appendChild(iframe);
-    hiddenAnalysisVideo = iframe;
-
-    // Start analysis loop when iframe loads
-    iframe.onload = () => {
-        try {
-            const iframeVideo = iframe.contentDocument?.querySelector('video');
-            if (iframeVideo) {
-                iframeVideo.playbackRate = 16; // Speed up analysis
-                iframeVideo.requestVideoFrameCallback(analyzeVideoLoop);
-                console.debug('[Ceddo Skipper]: Analysis loop started');
-            }
-        } catch (error) {
-            console.debug('[Ceddo Skipper]: Error starting analysis loop:', error);
-        }
-    };
-
-    console.debug(`[Ceddo Skipper]: Hidden analysis video created for video ID: ${videoId}`);
-}
-
 function extractYouTubeVideoId(url) {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
     return match ? match[1] : null;
 }
 
-function analyzeVideoLoop() {
-    if (!hiddenAnalysisVideo) return;
-
-    try {
-        // Access video element inside iframe
-        const iframeVideo = hiddenAnalysisVideo.contentDocument?.querySelector('video');
-        if (!iframeVideo) {
-            console.debug('[Ceddo Skipper]: Could not access video in iframe');
-            return;
-        }
-
-        const currentTime = iframeVideo.currentTime;
-        const isSkippable = !firstDatesIsPlayingForVideo(iframeVideo);
-
-        if (isSkippable) {
-            // Start new interval if we don't have one
-            if (!currentSkipInterval) {
-                currentSkipInterval = { start: currentTime, end: undefined };
-                skipIntervals.push(currentSkipInterval);
-                console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
-            }
-            // If we already have a current interval, just continue (no action needed)
-        } else {
-            // End current interval if we have one
-            if (currentSkipInterval) {
-                currentSkipInterval.end = currentTime;
-                console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
-                currentSkipInterval = null;
-            }
-        }
-
-        // we can't directly check for the end of the video, because on the last frameCallback,
-        // the video will not have ended, we therefore use this heuristic to close the last
-        // interval of the video
-        const isNearEnd = iframeVideo.duration && (currentTime >= iframeVideo.duration - 1);
-
-        // Continue analysis
-        if (iframeVideo && !iframeVideo.ended && !isNearEnd) {
-            iframeVideo.requestVideoFrameCallback(analyzeVideoLoop);
-        } else {
-            if (currentSkipInterval) {
-                currentSkipInterval.end = iframeVideo.duration || currentTime;
-                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
-                currentSkipInterval = null;
-            }
-        }
-    } catch (error) {
-        console.debug('[Ceddo Skipper]: Error in analyzeVideoLoop:', error);
-    }
+function toEmbedUrl() {
+    const videoId = extractYouTubeVideoId(window.location.href);
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
 }
 
 function firstDatesIsPlayingForVideo(video, enableTiming = false) {
@@ -202,7 +83,7 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
                 closeMatches++;
 
                 // Early return once we have enough matches
-                if (closeMatches >= 1000) {
+                if (closeMatches >= 200) {
                     if (enableTiming) {
                         const pixelProcessingEndTime = performance.now();
                         console.debug(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
@@ -239,77 +120,99 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
     }
 }
 
-function shouldSkipBasedOnCache(currentTime) {
-    return skipIntervals.find(interval =>
-        currentTime >= interval.start && interval.end !== undefined && currentTime <= interval.end
-    );
-}
+function runSkipper(video) {
+    const originalSrc = video.src;
+    const skipIntervals = [];
 
-async function runCeddoSkipper() {
-    if (!isCeddoPage()) {
-        return;
-    }
-
-    if (!isVideoPlayingAndExists()) {
-        return;
-    }
-
-    const video = document.querySelector('video');
-
-    // First check if we should skip based on pre-analyzed intervals
-    const skipInterval = shouldSkipBasedOnCache(video.currentTime);
-    if (skipInterval) {
-        console.debug(`[Ceddo Skipper]: Skipping from ${video.currentTime}s to ${skipInterval.end}s based on cached interval`);
-        video.currentTime = skipInterval.end;
-        return;
-    }
-
-    // Fall back to real-time analysis if no cached data
-    if (!firstDatesIsPlaying() && !isVideoBuffering() && !video.ended && video.currentTime < video.duration) {
-        console.debug('[Ceddo Skipper]: Less than 1000 close matches detected, skipping...');
-        skipVideoAhead();
-    }
-}
-
-let currentVideo = null;
-let hiddenAnalysisVideo = null;
-let skipIntervals = [];
-let currentSkipInterval = null;
-let analysisVideoSrc = null;
-
-function startVideoMonitoring() {
-    const video = document.querySelector('video');
-    if (video && video !== currentVideo) {
-        currentVideo = video;
-
-        // Get video source for analysis video
-        const videoSrc = video.currentSrc || video.src;
-        if (videoSrc && videoSrc !== analysisVideoSrc) {
-            analysisVideoSrc = videoSrc;
-            createHiddenAnalysisVideo(videoSrc);
+    const mainVideoFrameCallback = () => {
+        if (originalSrc != video.src) {
+            // the video src has changed in the meantime (youtube reuses the same <video> node), so we are no longer interested
+            // in providing callbacks for this video.
+            return;
         }
 
-        video.requestVideoFrameCallback(checkVideoLoop);
+        if (video.paused || video.ended || video.readyState < 3 || !isCeddoPage()) {
+            video.requestVideoFrameCallback(mainVideoFrameCallback);
+            return;
+        }
+
+        const skipInterval = skipIntervals.find(interval => video.currentTime >= interval.start && interval.end !== undefined && video.currentTime <= interval.end);
+
+        if (skipInterval) {
+            // we are in a known commentary section, so we can skip ahead to the end of it
+            video.currentTime = skipInterval.end;
+        }
+        else if (!firstDatesIsPlayingForVideo(video)) {
+            // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
+            // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
+            // playback position
+            video.currentTime += 1;
+        }
+
+        video.requestVideoFrameCallback(mainVideoFrameCallback);
+    };
+
+    video.requestVideoFrameCallback(mainVideoFrameCallback);
+
+
+    const iframe = document.createElement('iframe');
+    document.documentElement.appendChild(iframe);
+    iframe.referrerPolicy = 'strict-origin';
+    iframe.src = toEmbedUrl();
+
+    iframe.onload = () => {
+        const skipAheadVideo = iframe.contentDocument.querySelector('video');
+        skipAheadVideo.playbackRate = 16;
+        let currentSkipInterval = null;
+
+        const skipAheadVideoFrameCallback = () => {
+            if (originalSrc !== video.src) {
+                iframe.remove();
+                return;
+            }
+
+            const currentTime = skipAheadVideo.currentTime;
+
+            if (!firstDatesIsPlayingForVideo(skipAheadVideo)) {
+                if (!currentSkipInterval) {
+                    currentSkipInterval = { start: currentTime, end: undefined };
+                    skipIntervals.push(currentSkipInterval);
+                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
+                }
+            } else {
+                if (currentSkipInterval) {
+                    currentSkipInterval.end = currentTime;
+                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
+                    currentSkipInterval = null;
+                }
+            }
+
+            // we can't directly check for the end of the video, because on the last frameCallback,
+            // the video will not have ended, we therefore use this heuristic to close the last
+            // interval of the video
+            const isNearEnd = skipAheadVideo.duration && (currentTime >= skipAheadVideo.duration - 1);
+
+            if (isNearEnd && currentSkipInterval) {
+                currentSkipInterval.end = skipAheadVideo.duration || currentTime;
+                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
+                currentSkipInterval = null;
+            }
+            else {
+                skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
+            }
+        };
+
+        skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
     }
 }
 
-function checkVideoLoop() {
-    runCeddoSkipper();
-    const video = document.querySelector('video');
-    if (video && video === currentVideo) {
-        video.requestVideoFrameCallback(checkVideoLoop);
-    } else {
-        currentVideo = null;
-        startVideoMonitoring();
-    }
-}
 
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.target.tagName === 'VIDEO') {
             console.log('[Ceddo Skipper]: Video attributes changed ' + mutation.attributeName + ', restarting monitoring...');
             console.log('[Ceddo Skipper]: Current video source: ' + mutation.target.src);
-            startVideoMonitoring();
+            runSkipper(mutation.target);
         }
     });
 });
