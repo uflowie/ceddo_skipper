@@ -33,9 +33,14 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
 const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 
 function findSkipIntervals(video, skipIntervals, originalUrl) {
+    // our goal here is to find all the intervals where commentary is being provided
+    // to achieve this we create a hidden iframe that plays the same video at 16x speed
+    // and stores all of the intervals in skipIntervals. these skipIntervals are used
+    // for the actual video so we don't have to check each frame there.
+
     const iframe = document.createElement('iframe');
     document.documentElement.appendChild(iframe);
-    iframe.referrerPolicy = 'strict-origin';
+    iframe.referrerPolicy = 'strict-origin'; // video doesn't load otherwise
 
     const videoId = originalUrl.match(regex)[1];
 
@@ -125,7 +130,6 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
             console.debug(`[Ceddo Skipper]: Video drawing: ${(drawEndTime - drawStartTime).toFixed(2)}ms`);
         }
 
-        // Only check bottom right cell of 3x2 grid - this is where we expect the ceddo portrait to be
         const startX = Math.floor((canvas.width * 2) / 3);
         const startY = Math.floor(canvas.height / 2);
         const width = canvas.width - startX;
@@ -148,7 +152,6 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
             const g = pixels[i + 1];
             const b = pixels[i + 2];
 
-            // Check for close match (within 20)
             const rDiff = Math.abs(r - targetColor.r);
             const gDiff = Math.abs(g - targetColor.g);
             const bDiff = Math.abs(b - targetColor.b);
@@ -156,7 +159,6 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
             if (rDiff <= 20 && gDiff <= 20 && bDiff <= 20) {
                 closeMatches++;
 
-                // Early return once we have enough matches
                 if (closeMatches >= 200) {
                     if (enableTiming) {
                         const pixelProcessingEndTime = performance.now();
