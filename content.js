@@ -209,13 +209,12 @@ function runSkipper(video) {
 
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.target.tagName === 'VIDEO') {
-            console.log('[Ceddo Skipper]: Video attributes changed ' + mutation.attributeName + ', restarting monitoring...');
-            console.log('[Ceddo Skipper]: Current video source: ' + mutation.target.src);
+        if (mutation.type === 'attributes' && mutation.target.tagName === 'VIDEO' && mutation.oldValue == null) {
+            // we check for oldValue == null, because the src is set to null before setting it to the new source when navigating to a different way
+            // this way we avoid registering the skipper twice, as the mutationobserver fires for both events
             runSkipper(mutation.target);
         }
     });
 });
 
-console.log("[Ceddo Skipper]: attaching observer");
-observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['src'] })
+observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['src'], attributeOldValue: true })
