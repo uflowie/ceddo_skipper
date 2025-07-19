@@ -1,12 +1,91 @@
-function extractYouTubeVideoId(url) {
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
+function skipOverCommentary(video, skipIntervals, originalUrl) {
+    const mainVideoFrameCallback = () => {
+        if (originalUrl != window.location.href) {
+            // the video src has changed in the meantime (youtube reuses the same <video> node), so we are no longer interested
+            // in providing callbacks for this video.
+            return;
+        }
+
+        if (video.paused || video.ended || video.readyState < 3) {
+            video.requestVideoFrameCallback(mainVideoFrameCallback);
+            return;
+        }
+
+        const skipInterval = skipIntervals.find(interval => video.currentTime >= interval.start && interval.end !== undefined && video.currentTime <= interval.end);
+
+        if (skipInterval) {
+            // we are in a known commentary section, so we can skip ahead to the end of it
+            video.currentTime = skipInterval.end;
+        }
+        else if (!firstDatesIsPlayingForVideo(video)) {
+            // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
+            // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
+            // playback position
+            video.currentTime += 1;
+        }
+
+        video.requestVideoFrameCallback(mainVideoFrameCallback);
+    };
+
+    video.requestVideoFrameCallback(mainVideoFrameCallback);
 }
 
-function toEmbedUrl() {
-    const videoId = extractYouTubeVideoId(window.location.href);
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
+const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+
+function findSkipIntervals(video, skipIntervals, originalUrl) {
+    const iframe = document.createElement('iframe');
+    document.documentElement.appendChild(iframe);
+    iframe.referrerPolicy = 'strict-origin';
+
+    const videoId = originalUrl.match(regex)[1];
+
+
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
+
+    iframe.onload = () => {
+        const skipAheadVideo = iframe.contentDocument.querySelector('video');
+        skipAheadVideo.playbackRate = 16;
+        let currentSkipInterval = null;
+
+        const skipAheadVideoFrameCallback = () => {
+            if (originalUrl !== window.location.href || video.ended) {
+                iframe.remove();
+                return;
+            }
+
+            const currentTime = skipAheadVideo.currentTime;
+
+            if (!firstDatesIsPlayingForVideo(skipAheadVideo)) {
+                if (!currentSkipInterval) {
+                    currentSkipInterval = { start: currentTime, end: undefined };
+                    skipIntervals.push(currentSkipInterval);
+                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
+                }
+            } else {
+                if (currentSkipInterval) {
+                    currentSkipInterval.end = currentTime;
+                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
+                    currentSkipInterval = null;
+                }
+            }
+
+            // we can't directly check for the end of the video, because on the last frameCallback,
+            // the video will not have ended, we therefore use this heuristic to close the last
+            // interval of the video
+            const isNearEnd = skipAheadVideo.duration && (currentTime >= skipAheadVideo.duration - 1);
+
+            if (isNearEnd && currentSkipInterval) {
+                currentSkipInterval.end = skipAheadVideo.duration || currentTime;
+                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
+                currentSkipInterval = null;
+            }
+            else {
+                skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
+            }
+        };
+
+        skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
+    }
 }
 
 function firstDatesIsPlayingForVideo(video, enableTiming = false) {
@@ -115,92 +194,6 @@ function firstDatesIsPlayingForVideo(video, enableTiming = false) {
     }
 }
 
-function runSkipper(video) {
-    const originalSrc = video.src;
-    const skipIntervals = [];
-
-    const mainVideoFrameCallback = () => {
-        if (originalSrc != video.src) {
-            // the video src has changed in the meantime (youtube reuses the same <video> node), so we are no longer interested
-            // in providing callbacks for this video.
-            return;
-        }
-
-        if (video.paused || video.ended || video.readyState < 3) {
-            video.requestVideoFrameCallback(mainVideoFrameCallback);
-            return;
-        }
-
-        const skipInterval = skipIntervals.find(interval => video.currentTime >= interval.start && interval.end !== undefined && video.currentTime <= interval.end);
-
-        if (skipInterval) {
-            // we are in a known commentary section, so we can skip ahead to the end of it
-            video.currentTime = skipInterval.end;
-        }
-        else if (!firstDatesIsPlayingForVideo(video)) {
-            // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
-            // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
-            // playback position
-            video.currentTime += 1;
-        }
-
-        video.requestVideoFrameCallback(mainVideoFrameCallback);
-    };
-
-    video.requestVideoFrameCallback(mainVideoFrameCallback);
-
-
-    const iframe = document.createElement('iframe');
-    document.documentElement.appendChild(iframe);
-    iframe.referrerPolicy = 'strict-origin';
-    iframe.src = toEmbedUrl();
-
-    iframe.onload = () => {
-        const skipAheadVideo = iframe.contentDocument.querySelector('video');
-        skipAheadVideo.playbackRate = 16;
-        let currentSkipInterval = null;
-
-        const skipAheadVideoFrameCallback = () => {
-            if (originalSrc !== video.src || video.ended) {
-                iframe.remove();
-                return;
-            }
-
-            const currentTime = skipAheadVideo.currentTime;
-
-            if (!firstDatesIsPlayingForVideo(skipAheadVideo)) {
-                if (!currentSkipInterval) {
-                    currentSkipInterval = { start: currentTime, end: undefined };
-                    skipIntervals.push(currentSkipInterval);
-                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
-                }
-            } else {
-                if (currentSkipInterval) {
-                    currentSkipInterval.end = currentTime;
-                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
-                    currentSkipInterval = null;
-                }
-            }
-
-            // we can't directly check for the end of the video, because on the last frameCallback,
-            // the video will not have ended, we therefore use this heuristic to close the last
-            // interval of the video
-            const isNearEnd = skipAheadVideo.duration && (currentTime >= skipAheadVideo.duration - 1);
-
-            if (isNearEnd && currentSkipInterval) {
-                currentSkipInterval.end = skipAheadVideo.duration || currentTime;
-                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
-                currentSkipInterval = null;
-            }
-            else {
-                skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
-            }
-        };
-
-        skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
-    }
-}
-
 window.addEventListener('yt-page-data-fetched', ev => {
     // this event fires slightly after the video starts playing. we still choose to wait for this, because this is the most reliable
     // way to get the channelId. we initially tried getting the current channel from the DOM but this ended up being out of 
@@ -208,6 +201,10 @@ window.addEventListener('yt-page-data-fetched', ev => {
     const channelId = ev.detail?.pageData?.playerResponse?.videoDetails?.channelId;
     if (channelId === "UC-QOcOL01vuShdAk01YzDmw") {
         const video = document.querySelector("video");
-        runSkipper(video);
+        const skipIntervals = [];
+        const originalUrl = window.location.href;
+
+        skipOverCommentary(video, skipIntervals, originalUrl);
+        findSkipIntervals(video, skipIntervals, originalUrl);
     }
 }, true)
