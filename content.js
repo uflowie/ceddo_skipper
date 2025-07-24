@@ -1,5 +1,5 @@
 function skipOverCommentary(video, skipIntervals, originalUrl) {
-    const mainVideoFrameCallback = () => {
+    const mainVideoFrameCallback = (_, { mediaTime }) => {
         if (originalUrl != window.location.href) {
             // the video src has changed in the meantime (youtube reuses the same <video> node), so we are no longer interested
             // in providing callbacks for this video.
@@ -11,13 +11,13 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
             return;
         }
 
-        const skipInterval = skipIntervals.find(interval => video.currentTime >= interval.start && interval.end !== undefined && video.currentTime <= interval.end);
+        const skipInterval = skipIntervals.find(interval => mediaTime >= interval.start && interval.end !== undefined && mediaTime <= interval.end);
 
         if (skipInterval) {
             // we are in a known commentary section, so we can skip ahead to the end of it
             video.currentTime = skipInterval.end;
         }
-        else if (!firstDatesIsPlayingForVideo(video)) {
+        else if (!shouldSkip(video)) {
             // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
             // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
             // playback position
@@ -52,24 +52,22 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
         skipAheadVideo.playbackRate = 16;
         let currentSkipInterval = null;
 
-        const skipAheadVideoFrameCallback = () => {
+        const skipAheadVideoFrameCallback = (_, { mediaTime }) => {
             if (originalUrl !== window.location.href || video.ended) {
                 iframe.remove();
                 return;
             }
 
-            const currentTime = skipAheadVideo.currentTime;
-
-            if (!firstDatesIsPlayingForVideo(skipAheadVideo)) {
+            if (!shouldSkip(skipAheadVideo)) {
                 if (!currentSkipInterval) {
-                    currentSkipInterval = { start: currentTime, end: undefined };
+                    currentSkipInterval = { start: mediaTime, end: undefined };
                     skipIntervals.push(currentSkipInterval);
-                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${currentTime}s`);
+                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${mediaTime}s`);
                 }
             } else {
                 if (currentSkipInterval) {
-                    currentSkipInterval.end = currentTime;
-                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${currentTime}s`);
+                    currentSkipInterval.end = mediaTime;
+                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${mediaTime}s`);
                     currentSkipInterval = null;
                 }
             }
@@ -77,10 +75,10 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
             // we can't directly check for the end of the video, because on the last frameCallback,
             // the video will not have ended, we therefore use this heuristic to close the last
             // interval of the video
-            const isNearEnd = skipAheadVideo.duration && (currentTime >= skipAheadVideo.duration - 1);
+            const isNearEnd = skipAheadVideo.duration && (mediaTime >= skipAheadVideo.duration - 1);
 
             if (isNearEnd && currentSkipInterval) {
-                currentSkipInterval.end = skipAheadVideo.duration || currentTime;
+                currentSkipInterval.end = skipAheadVideo.duration || mediaTime;
                 console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
                 currentSkipInterval = null;
             }
@@ -93,7 +91,7 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
     }
 }
 
-function firstDatesIsPlayingForVideo(video, enableTiming = false) {
+function shouldSkip(video, enableTiming = false) {
     const startTime = enableTiming ? performance.now() : null;
 
     // light blue ish color that is used in the border surrounding ceddo's portrait
