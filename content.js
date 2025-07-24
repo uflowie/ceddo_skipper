@@ -44,13 +44,13 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
 
     const videoId = originalUrl.match(regex)[1];
 
-
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
 
     iframe.onload = () => {
         const skipAheadVideo = iframe.contentDocument.querySelector('video');
         skipAheadVideo.playbackRate = 16;
         let currentSkipInterval = null;
+        let lastFrameTime = 0;
 
         const skipAheadVideoFrameCallback = (_, { mediaTime }) => {
             if (originalUrl !== window.location.href || video.ended) {
@@ -58,9 +58,16 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
                 return;
             }
 
+            // if we took the first frame where we should skip as the start of the interval
+            // we would still be showing this frame to the user. to try to prevent this, we
+            // instead store the time of the last frame before that and use that as the start
+            // of the interval
+            const tmp = lastFrameTime;
+            lastFrameTime = mediaTime;
+
             if (!shouldSkip(skipAheadVideo)) {
                 if (!currentSkipInterval) {
-                    currentSkipInterval = { start: mediaTime, end: undefined };
+                    currentSkipInterval = { start: tmp, end: undefined };
                     skipIntervals.push(currentSkipInterval);
                     console.debug(`[Ceddo Skipper]: Started new skip interval at ${mediaTime}s`);
                 }
