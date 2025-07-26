@@ -17,7 +17,7 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
             // we are in a known commentary section, so we can skip ahead to the end of it
             video.currentTime = skipInterval.end;
         }
-        else if (!shouldSkip(video)) {
+        else if (shouldSkip(video)) {
             // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
             // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
             // playback position
@@ -65,7 +65,7 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
             const tmp = lastFrameTime;
             lastFrameTime = mediaTime;
 
-            if (!shouldSkip(skipAheadVideo)) {
+            if (shouldSkip(skipAheadVideo)) {
                 if (!currentSkipInterval) {
                     currentSkipInterval = { start: tmp, end: undefined };
                     skipIntervals.push(currentSkipInterval);
@@ -98,107 +98,49 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
     }
 }
 
-function shouldSkip(video, enableTiming = false) {
-    const startTime = enableTiming ? performance.now() : null;
-
+function shouldSkip(video) {
     // light blue ish color that is used in the border surrounding ceddo's portrait
     // if this color is present in the video, it means that ceddo is NOT full screen 
     // and the actual content we are interested in is playing
     const targetColor = { r: 0, g: 157, b: 239 };
 
-    if (!video) {
-        if (enableTiming) {
-            const endTime = performance.now();
-            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
-        }
-        return false;
-    }
-
-    const canvasStartTime = enableTiming ? performance.now() : null;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    if (enableTiming) {
-        const canvasEndTime = performance.now();
-        console.debug(`[Ceddo Skipper]: Canvas creation: ${(canvasEndTime - canvasStartTime).toFixed(2)}ms`);
-    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    try {
-        const drawStartTime = enableTiming ? performance.now() : null;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // we only analyse the bottom right corner in a 3x2 grid. this is where we expect the portrait to be
+    const startX = Math.floor((canvas.width * 2) / 3);
+    const startY = Math.floor(canvas.height / 2);
+    const width = canvas.width - startX;
+    const height = canvas.height - startY;
 
-        if (enableTiming) {
-            const drawEndTime = performance.now();
-            console.debug(`[Ceddo Skipper]: Video drawing: ${(drawEndTime - drawStartTime).toFixed(2)}ms`);
-        }
+    const imageData = ctx.getImageData(startX, startY, width, height);
+    const pixels = imageData.data;
 
-        const startX = Math.floor((canvas.width * 2) / 3);
-        const startY = Math.floor(canvas.height / 2);
-        const width = canvas.width - startX;
-        const height = canvas.height - startY;
+    let closeMatches = 0;
 
-        const imageDataStartTime = enableTiming ? performance.now() : null;
-        const imageData = ctx.getImageData(startX, startY, width, height);
-        const pixels = imageData.data;
+    for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
 
-        if (enableTiming) {
-            const imageDataEndTime = performance.now();
-            console.debug(`[Ceddo Skipper]: Image data extraction: ${(imageDataEndTime - imageDataStartTime).toFixed(2)}ms`);
-        }
+        const rDiff = Math.abs(r - targetColor.r);
+        const gDiff = Math.abs(g - targetColor.g);
+        const bDiff = Math.abs(b - targetColor.b);
 
-        let closeMatches = 0;
+        if (rDiff <= 20 && gDiff <= 20 && bDiff <= 20) {
+            closeMatches++;
 
-        const pixelProcessingStartTime = enableTiming ? performance.now() : null;
-        for (let i = 0; i < pixels.length; i += 4) {
-            const r = pixels[i];
-            const g = pixels[i + 1];
-            const b = pixels[i + 2];
-
-            const rDiff = Math.abs(r - targetColor.r);
-            const gDiff = Math.abs(g - targetColor.g);
-            const bDiff = Math.abs(b - targetColor.b);
-
-            if (rDiff <= 20 && gDiff <= 20 && bDiff <= 20) {
-                closeMatches++;
-
-                if (closeMatches >= 200) {
-                    if (enableTiming) {
-                        const pixelProcessingEndTime = performance.now();
-                        console.debug(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
-                        const endTime = performance.now();
-                        console.debug(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}+ (early termination)`);
-                        console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
-                    }
-                    return true;
-                }
+            if (closeMatches >= 200) {
+                return false;
             }
         }
-
-        if (enableTiming) {
-            const pixelProcessingEndTime = performance.now();
-            console.debug(`[Ceddo Skipper]: Pixel processing: ${(pixelProcessingEndTime - pixelProcessingStartTime).toFixed(2)}ms`);
-            console.debug(`[Ceddo Skipper]: Close matches (±20): ${closeMatches}`);
-        }
-
-        const result = closeMatches >= 1000; // at most resolutions, this is enough pixels to ensure we are looking at the ceddo portrait
-
-        if (enableTiming) {
-            const endTime = performance.now();
-            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
-        }
-
-        return result;
-    } catch (error) {
-        console.debug('[Ceddo Skipper]: Error checking video frame:', error);
-        if (enableTiming) {
-            const endTime = performance.now();
-            console.debug(`[Ceddo Skipper]: firstDatesIsPlaying timing: ${(endTime - startTime).toFixed(2)}ms`);
-        }
-        return false;
     }
+    return true;
 }
 
 window.addEventListener('yt-page-data-fetched', ev => {
