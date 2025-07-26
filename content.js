@@ -11,7 +11,7 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
             return;
         }
 
-        const skipInterval = skipIntervals.find(interval => mediaTime >= interval.start && interval.end !== undefined && mediaTime <= interval.end);
+        const skipInterval = skipIntervals.find(interval => video.currentTime >= interval.start && interval.end !== undefined && video.currentTime <= interval.end);
 
         if (skipInterval) {
             // we are in a known commentary section, so we can skip ahead to the end of it
