@@ -262,6 +262,8 @@ async function compareWithModel(video, shouldSkipResult) {
     if (!onnxSession || !modelComparisonEnabled) return;
     
     try {
+        const startTime = performance.now();
+        
         const inputTensor = preprocessImageForModel(video);
         const feeds = { input: new ort.Tensor('float32', inputTensor, [1, 3, 224, 224]) };
         
@@ -269,15 +271,21 @@ async function compareWithModel(video, shouldSkipResult) {
         const modelOutput = results.output.data[0]; // Get the logit
         const modelPrediction = modelOutput > 0; // Apply sigmoid threshold at 0.5 (logit > 0)
         
+        const endTime = performance.now();
+        const inferenceTime = (endTime - startTime).toFixed(2);
+        
         // Update statistics
         comparisonStats.total++;
         if (shouldSkipResult) comparisonStats.shouldSkipTrue++;
         if (modelPrediction) comparisonStats.modelTrue++;
         if (shouldSkipResult === modelPrediction) comparisonStats.matches++;
         
-        // Log disagreements for analysis
+        // Log every comparison with timing
+        console.log(`[Model Comparison]: ${video.currentTime.toFixed(1)}s - shouldSkip: ${shouldSkipResult}, model: ${modelPrediction} (logit: ${modelOutput.toFixed(4)}) - ${inferenceTime}ms`);
+        
+        // Display disagreement frame if predictions don't match
         if (shouldSkipResult !== modelPrediction) {
-            console.log(`[Model Comparison]: Disagreement at ${video.currentTime}s - shouldSkip: ${shouldSkipResult}, model: ${modelPrediction} (logit: ${modelOutput.toFixed(4)})`);
+            displayDisagreementFrame(video, shouldSkipResult, modelPrediction, modelOutput, video.currentTime);
         }
         
         // Log stats every 100 comparisons
@@ -414,6 +422,27 @@ function createDataCollectionControls() {
     comparisonStats.textContent = 'Comparisons: 0 (Accuracy: N/A)';
     comparisonStats.style.marginTop = '5px';
 
+    const disagreementCanvas = document.createElement('canvas');
+    disagreementCanvas.id = 'disagreement-canvas';
+    disagreementCanvas.width = 200;
+    disagreementCanvas.height = 150;
+    disagreementCanvas.style.cssText = `
+        margin-top: 10px;
+        border: 2px solid #aa0000;
+        border-radius: 4px;
+        display: none;
+        background: #000;
+    `;
+
+    const disagreementLabel = document.createElement('div');
+    disagreementLabel.id = 'disagreement-label';
+    disagreementLabel.style.cssText = `
+        margin-top: 5px;
+        font-size: 12px;
+        color: #aa0000;
+        display: none;
+    `;
+
     startButton.onclick = () => {
         isCollectingData = true;
         frameCounter = 0;
@@ -445,6 +474,8 @@ function createDataCollectionControls() {
     controlsContainer.appendChild(frameCount);
     controlsContainer.appendChild(modelStatus);
     controlsContainer.appendChild(comparisonStats);
+    controlsContainer.appendChild(disagreementCanvas);
+    controlsContainer.appendChild(disagreementLabel);
 
     document.body.appendChild(controlsContainer);
 }
@@ -469,6 +500,40 @@ function updateComparisonStats() {
         const accuracy = (comparisonStats.matches / comparisonStats.total * 100).toFixed(1);
         comparisonStatsElement.textContent = `Comparisons: ${comparisonStats.total} (Accuracy: ${accuracy}%)`;
     }
+}
+
+function displayDisagreementFrame(video, shouldSkipResult, modelPrediction, modelOutput, videoTime) {
+    const canvas = document.getElementById('disagreement-canvas');
+    const label = document.getElementById('disagreement-label');
+    
+    if (!canvas || !label) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Draw the video frame to the canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Show the canvas and label
+    canvas.style.display = 'block';
+    label.style.display = 'block';
+    
+    // Update the label with disagreement details
+    const shouldSkipText = shouldSkipResult ? 'SKIP' : 'PLAY';
+    const modelText = modelPrediction ? 'SKIP' : 'PLAY';
+    label.textContent = `Disagreement at ${videoTime.toFixed(1)}s: shouldSkip=${shouldSkipText}, model=${modelText} (${modelOutput.toFixed(3)})`;
+    
+    // Add visual indicators on the canvas
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    
+    // Add text overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '12px Arial';
+    ctx.fillText(`Original: ${shouldSkipText} | Model: ${modelText}`, 5, canvas.height - 10);
 }
 
 // Initialize model on page load
