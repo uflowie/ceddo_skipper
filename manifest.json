@@ -16,9 +16,17 @@
         "https://*.youtube.com/*"
       ],
       "js": [
+        "jszip.min.js",
+        "ort.min.js",
         "content.js"
       ],
       "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["nn/trained_model.onnx", "ort-wasm-simd.wasm", "ort-wasm.wasm"],
+      "matches": ["https://*.youtube.com/*"]
     }
   ]
 }
