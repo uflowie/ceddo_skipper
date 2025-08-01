@@ -25,7 +25,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["nn/trained_model.onnx", "ort-wasm-simd.wasm", "ort-wasm.wasm"],
+      "resources": ["nn/trained_model.onnx", "nn/trained_model_mobilenet.onnx", "ort-wasm-simd.wasm", "ort-wasm.wasm"],
       "matches": ["https://*.youtube.com/*"]
     }
   ]

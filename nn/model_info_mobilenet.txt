@@ -1,0 +1,10 @@
+Model: MobileNetV3-Small
+Input size: 224x224
+Output: Single logit (binary classification)
+Training epochs: 5
+Final accuracy: 100.00%
+Classifier architecture:
+  Linear(576 -> 1024)
+  Hardswish()
+  Dropout(0.2)
+  Linear(1024 -> 1)

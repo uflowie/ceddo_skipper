@@ -219,14 +219,14 @@ async function loadOnnxModel() {
 
 async function initializeModel() {
     try {
-        // Load the ONNX model
-        const modelUrl = chrome.runtime.getURL('nn/trained_model.onnx');
+        // Load the MobileNetV3 ONNX model
+        const modelUrl = chrome.runtime.getURL('nn/trained_model_mobilenet.onnx');
         onnxSession = await ort.InferenceSession.create(modelUrl);
-        console.log('[Model Comparison]: ONNX model loaded successfully');
+        console.log('[Model Comparison]: MobileNetV3 ONNX model loaded successfully');
         modelComparisonEnabled = true;
         updateModelStatus();
     } catch (error) {
-        console.error('[Model Comparison]: Failed to load ONNX model:', error);
+        console.error('[Model Comparison]: Failed to load MobileNetV3 ONNX model:', error);
         modelComparisonEnabled = false;
         updateModelStatus();
     }
@@ -485,10 +485,10 @@ function updateModelStatus() {
     
     if (modelStatusElement) {
         if (modelComparisonEnabled && onnxSession) {
-            modelStatusElement.textContent = 'Model: Loaded & Active';
+            modelStatusElement.textContent = 'MobileNetV3: Loaded & Active';
             modelStatusElement.style.color = '#00aa00';
         } else {
-            modelStatusElement.textContent = 'Model: Loading...';
+            modelStatusElement.textContent = 'MobileNetV3: Loading...';
             modelStatusElement.style.color = '#cc6600';
         }
     }
