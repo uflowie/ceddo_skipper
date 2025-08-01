@@ -5,7 +5,7 @@ let modelComparisonEnabled = false;
 let comparisonStats = { total: 0, matches: 0, shouldSkipTrue: 0, modelTrue: 0 };
 
 function skipOverCommentary(video, skipIntervals, originalUrl) {
-    const mainVideoFrameCallback = (_, { mediaTime }) => {
+    const mainVideoFrameCallback = async (_, { mediaTime }) => {
         if (originalUrl != window.location.href) {
             // the video src has changed in the meantime (youtube reuses the same <video> node), so we are no longer interested
             // in providing callbacks for this video.
@@ -19,7 +19,7 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
 
         // Data collection mode
         if (isCollectingData) {
-            captureFrame(video);
+            await captureFrame(video);
             video.requestVideoFrameCallback(mainVideoFrameCallback);
             return;
         }
@@ -30,20 +30,13 @@ function skipOverCommentary(video, skipIntervals, originalUrl) {
             // we are in a known commentary section, so we can skip ahead to the end of it
             video.currentTime = skipInterval.end;
         }
-        else if (shouldSkip(video)) {
-            // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
-            // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
-            // playback position
-            video.currentTime += 1;
-            
-            // Compare with model prediction if enabled
-            if (modelComparisonEnabled && onnxSession) {
-                compareWithModel(video, true);
-            }
-        } else {
-            // Compare with model prediction when shouldSkip returns false
-            if (modelComparisonEnabled && onnxSession) {
-                compareWithModel(video, false);
+        else {
+            const skipResult = await shouldSkip(video);
+            if (skipResult) {
+                // we do not yet know when this commentary section will end, but we know that we are in one so we skip ahead.
+                // this usually happens at the start of the video before the skip ahead iframe has analysed past the current 
+                // playback position
+                video.currentTime += 1;
             }
         }
 
@@ -75,7 +68,7 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
         let currentSkipInterval = null;
         let lastFrameTime = 0;
 
-        const skipAheadVideoFrameCallback = (_, { mediaTime }) => {
+        const skipAheadVideoFrameCallback = async (_, { mediaTime }) => {
             if (originalUrl !== window.location.href || video.ended) {
                 iframe.remove();
                 return;
@@ -88,7 +81,7 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
             const tmp = lastFrameTime;
             lastFrameTime = mediaTime;
 
-            const shouldSkipResult = shouldSkip(skipAheadVideo);
+            const shouldSkipResult = await shouldSkip(skipAheadVideo);
             if (shouldSkipResult) {
                 if (!currentSkipInterval) {
                     currentSkipInterval = { start: tmp, end: undefined };
@@ -101,11 +94,6 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
                     console.debug(`[Ceddo Skipper]: Ended skip interval at ${mediaTime}s`);
                     currentSkipInterval = null;
                 }
-            }
-            
-            // Compare with model in skip-ahead video too
-            if (modelComparisonEnabled && onnxSession) {
-                compareWithModel(skipAheadVideo, shouldSkipResult);
             }
 
             // we can't directly check for the end of the video, because on the last frameCallback,
@@ -129,7 +117,7 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
 
 let capturedFrames = { yes: [], no: [] };
 
-function captureFrame(video) {
+async function captureFrame(video) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -138,7 +126,7 @@ function captureFrame(video) {
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    const shouldSkipResult = shouldSkip(video);
+    const shouldSkipResult = await shouldSkip(video);
     const label = shouldSkipResult ? 'yes' : 'no';
     const timestamp = Date.now();
     const filename = `frame_${frameCounter}_${timestamp}.png`;
@@ -232,7 +220,7 @@ async function initializeModel() {
     }
 }
 
-function preprocessImageForModel(video) {
+function preprocessImageForModel(sourceCanvas) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -240,7 +228,7 @@ function preprocessImageForModel(video) {
     canvas.width = 224;
     canvas.height = 224;
     
-    ctx.drawImage(video, 0, 0, 224, 224);
+    ctx.drawImage(sourceCanvas, 0, 0, 224, 224);
     
     const imageData = ctx.getImageData(0, 0, 224, 224);
     const pixels = imageData.data;
@@ -258,13 +246,17 @@ function preprocessImageForModel(video) {
     return input;
 }
 
-async function compareWithModel(video, shouldSkipResult) {
+async function compareWithModelFromCanvas(canvas, ctx, video) {
     if (!onnxSession || !modelComparisonEnabled) return;
     
     try {
         const startTime = performance.now();
         
-        const inputTensor = preprocessImageForModel(video);
+        // Use shouldSkip logic on the same canvas
+        const shouldSkipResult = shouldSkipFromCanvas(canvas, ctx);
+        
+        // Run model inference on the same canvas
+        const inputTensor = preprocessImageForModel(canvas);
         const feeds = { input: new ort.Tensor('float32', inputTensor, [1, 3, 224, 224]) };
         
         const results = await onnxSession.run(feeds);
@@ -294,17 +286,21 @@ async function compareWithModel(video, shouldSkipResult) {
             console.log(`[Model Comparison]: Stats after ${comparisonStats.total} comparisons - Accuracy: ${accuracy}%, shouldSkip true: ${comparisonStats.shouldSkipTrue}, model true: ${comparisonStats.modelTrue}`);
         }
         
+        return shouldSkipResult;
+        
     } catch (error) {
         console.error('[Model Comparison]: Error during inference:', error);
+        // Fallback to original shouldSkip if model fails
+        return shouldSkipFromCanvas(canvas, ctx);
     }
 }
 
-function shouldSkip(video) {
-    // light blue ish color that is used in the border surrounding ceddo's portrait
-    // if this color is present in the video, it means that ceddo is NOT full screen 
-    // and the actual content we are interested in is playing
-    const targetColor = { r: 0, g: 157, b: 239 };
+// Legacy function for backward compatibility
+async function compareWithModel(video, shouldSkipResult) {
+    // This is now just used for logging - the actual comparison happens in compareWithModelFromCanvas
+}
 
+function captureVideoFrame(video) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -312,6 +308,15 @@ function shouldSkip(video) {
     canvas.height = video.videoHeight;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    return { canvas, ctx };
+}
+
+function shouldSkipFromCanvas(canvas, ctx) {
+    // light blue ish color that is used in the border surrounding ceddo's portrait
+    // if this color is present in the video, it means that ceddo is NOT full screen 
+    // and the actual content we are interested in is playing
+    const targetColor = { r: 0, g: 157, b: 239 };
 
     // we only analyse the bottom right corner in a 3x2 grid. this is where we expect the portrait to be
     const startX = Math.floor((canvas.width * 2) / 3);
@@ -342,6 +347,18 @@ function shouldSkip(video) {
         }
     }
     return true;
+}
+
+async function shouldSkip(video) {
+    const { canvas, ctx } = captureVideoFrame(video);
+    
+    // If model comparison is enabled, use the comparison function
+    if (modelComparisonEnabled && onnxSession) {
+        return await compareWithModelFromCanvas(canvas, ctx, video);
+    } else {
+        // Fallback to original logic
+        return shouldSkipFromCanvas(canvas, ctx);
+    }
 }
 
 function createDataCollectionControls() {
