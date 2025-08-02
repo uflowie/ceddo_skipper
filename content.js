@@ -207,14 +207,14 @@ async function loadOnnxModel() {
 
 async function initializeModel() {
     try {
-        // Load the MobileNetV3 ONNX model
-        const modelUrl = chrome.runtime.getURL('nn/trained_model_mobilenet.onnx');
+        // Load the MobileNetV4 ONNX model
+        const modelUrl = chrome.runtime.getURL('nn/trained_model_mobilenetv4.onnx');
         onnxSession = await ort.InferenceSession.create(modelUrl);
-        console.log('[Model Comparison]: MobileNetV3 ONNX model loaded successfully');
+        console.log('[Model Comparison]: MobileNetV4 ONNX model loaded successfully');
         modelComparisonEnabled = true;
         updateModelStatus();
     } catch (error) {
-        console.error('[Model Comparison]: Failed to load MobileNetV3 ONNX model:', error);
+        console.error('[Model Comparison]: Failed to load MobileNetV4 ONNX model:', error);
         modelComparisonEnabled = false;
         updateModelStatus();
     }
@@ -502,10 +502,10 @@ function updateModelStatus() {
     
     if (modelStatusElement) {
         if (modelComparisonEnabled && onnxSession) {
-            modelStatusElement.textContent = 'MobileNetV3: Loaded & Active';
+            modelStatusElement.textContent = 'MobileNetV4: Loaded & Active';
             modelStatusElement.style.color = '#00aa00';
         } else {
-            modelStatusElement.textContent = 'MobileNetV3: Loading...';
+            modelStatusElement.textContent = 'MobileNetV4: Loading...';
             modelStatusElement.style.color = '#cc6600';
         }
     }

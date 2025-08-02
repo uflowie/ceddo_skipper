@@ -1,0 +1,8 @@
+Model: MobileNetV4 Small (timm)
+Model name: mobilenetv4_conv_small.e2400_r224_in1k
+Input size: 224x224
+Output: Single logit (binary classification)
+Training epochs: 5
+Final accuracy: 100.00%
+Pretrained: Yes
+Framework: timm
