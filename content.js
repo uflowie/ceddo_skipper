@@ -1,6 +1,8 @@
 import JSZip from 'jszip';
 import * as ort from 'onnxruntime-web';
 
+ort.env.wasm.wasmPaths = chrome.runtime.getURL('ort/');
+
 let isCollectingData = false;
 let frameCounter = 0;
 let onnxSession = null;
