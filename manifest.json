@@ -16,8 +16,6 @@
         "https://*.youtube.com/*"
       ],
       "js": [
-        "jszip.min.js",
-        "ort.min.js",
         "content.js"
       ],
       "run_at": "document_start"

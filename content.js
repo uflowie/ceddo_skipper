@@ -1,3 +1,6 @@
+import JSZip from 'jszip';
+import * as ort from 'onnxruntime-web';
+
 let isCollectingData = false;
 let frameCounter = 0;
 let onnxSession = null;
@@ -187,19 +190,12 @@ async function downloadFramesAsZip() {
 
 async function loadOnnxModel() {
     try {
-        if (window.ort) {
-            console.log('[Model Comparison]: ONNX.js already available');
-            
-            // Configure ONNX.js to use local WASM files
-            ort.env.wasm.wasmPaths = {
-                'ort-wasm-simd.wasm': chrome.runtime.getURL('ort-wasm-simd.wasm'),
-                'ort-wasm.wasm': chrome.runtime.getURL('ort-wasm.wasm')
-            };
-            
-            await initializeModel();
-        } else {
-            console.error('[Model Comparison]: ONNX.js not available');
-        }
+        console.log('[Model Comparison]: ONNX.js available');
+        
+        // onnxruntime-web will automatically locate and load WASM files from the bundled assets
+        // No need to manually configure WASM paths when using bundler
+        
+        await initializeModel();
     } catch (error) {
         console.error('[Model Comparison]: Failed to load ONNX model:', error);
     }
