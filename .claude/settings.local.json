@@ -1,9 +1,16 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(mkdir:*)",
+      "Bash(move train.py scripts )",
+      "Bash(move train_mobilenet.py scripts )",
+      "Bash(move train_mobilenetv4.py scripts )",
+      "Bash(move test.py scripts)",
+      "Bash(mv:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
-  },
-  "$schema": "https://json.schemastore.org/claude-code-settings.json"
+  }
 }

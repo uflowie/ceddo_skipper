@@ -206,7 +206,7 @@ async function loadOnnxModel() {
 async function initializeModel() {
     try {
         // Load the MobileNetV4 ONNX model
-        const modelUrl = chrome.runtime.getURL('nn/trained_model_mobilenetv4.onnx');
+        const modelUrl = chrome.runtime.getURL('nn/models/trained_model_mobilenetv4.onnx');
         onnxSession = await ort.InferenceSession.create(modelUrl);
         console.log('[Model Comparison]: MobileNetV4 ONNX model loaded successfully');
         modelComparisonEnabled = true;

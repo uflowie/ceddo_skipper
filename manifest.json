@@ -15,9 +15,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "nn/trained_model.onnx",
-        "nn/trained_model_mobilenet.onnx",
-        "nn/trained_model_mobilenetv4.onnx",
+        "nn/models/trained_model.onnx",
+        "nn/models/trained_model_mobilenet.onnx",
+        "nn/models/trained_model_mobilenetv4.onnx",
         "ort/*"
       ],
       "matches": ["https://*.youtube.com/*"]
