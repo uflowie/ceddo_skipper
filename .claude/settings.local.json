@@ -9,7 +9,8 @@
       "Bash(move train_mobilenetv4.py scripts )",
       "Bash(move test.py scripts)",
       "Bash(mv:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:crxjs.dev)"
     ],
     "deny": []
   }
