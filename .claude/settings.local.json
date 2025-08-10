@@ -10,7 +10,9 @@
       "Bash(move test.py scripts)",
       "Bash(mv:*)",
       "Bash(ls:*)",
-      "WebFetch(domain:crxjs.dev)"
+      "WebFetch(domain:crxjs.dev)",
+      "Bash(pip install:*)",
+      "Bash(python:*)"
     ],
     "deny": []
   }
