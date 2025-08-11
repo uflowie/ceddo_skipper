@@ -1,0 +1,216 @@
+{
+  "results": {
+    "yes": {
+      "num_samples": 100,
+      "queries": {
+        "first dates": {
+          "mean": 0.2064991608262062,
+          "std": 0.010235078939739762,
+          "median": 0.20969589799642563,
+          "max": 0.21936041116714478
+        },
+        "first dates logo": {
+          "mean": 0.22199116051197051,
+          "std": 0.017998339683735102,
+          "median": 0.227824829518795,
+          "max": 0.24812088906764984
+        },
+        "first DATES white text": {
+          "mean": 0.22528065696358682,
+          "std": 0.01010807187480176,
+          "median": 0.2284218668937683,
+          "max": 0.23870067298412323
+        },
+        "white text on dark background": {
+          "mean": 0.2633777198195457,
+          "std": 0.010411300422091797,
+          "median": 0.26760634779930115,
+          "max": 0.27824893593788147
+        },
+        "TV show title": {
+          "mean": 0.24394393503665923,
+          "std": 0.011028600087226163,
+          "median": 0.24621720612049103,
+          "max": 0.25962361693382263
+        },
+        "dating show logo": {
+          "mean": 0.22382870689034462,
+          "std": 0.01927266737639711,
+          "median": 0.23116955906152725,
+          "max": 0.2539113759994507
+        },
+        "reality TV show": {
+          "mean": 0.22066017210483552,
+          "std": 0.007621037109723004,
+          "median": 0.22349975258111954,
+          "max": 0.22855666279792786
+        },
+        "German TV show": {
+          "mean": 0.22267592430114747,
+          "std": 0.010368218926811387,
+          "median": 0.2261265143752098,
+          "max": 0.2364586740732193
+        },
+        "dating program": {
+          "mean": 0.218424574136734,
+          "std": 0.010294492563521874,
+          "median": 0.2216849997639656,
+          "max": 0.23076367378234863
+        },
+        "television branding": {
+          "mean": 0.21749667093157768,
+          "std": 0.012261631771998042,
+          "median": 0.2212512567639351,
+          "max": 0.23722116649150848
+        },
+        "white typography": {
+          "mean": 0.2041197195649147,
+          "std": 0.007991040738102357,
+          "median": 0.20289084315299988,
+          "max": 0.2275228053331375
+        },
+        "show title text": {
+          "mean": 0.2529420584440231,
+          "std": 0.012819202145674578,
+          "median": 0.25588105618953705,
+          "max": 0.2688847482204437
+        },
+        "first DATES TV show": {
+          "mean": 0.2174678026139736,
+          "std": 0.011053901085571402,
+          "median": 0.22021017968654633,
+          "max": 0.23804083466529846
+        },
+        "dating reality show": {
+          "mean": 0.2224944032728672,
+          "std": 0.013162990954227599,
+          "median": 0.22745444625616074,
+          "max": 0.23647275567054749
+        }
+      }
+    },
+    "no": {
+      "num_samples": 100,
+      "queries": {
+        "first dates": {
+          "mean": 0.35106035470962527,
+          "std": 0.027395428334263994,
+          "median": 0.3650337904691696,
+          "max": 0.3793695867061615
+        },
+        "first dates logo": {
+          "mean": 0.41180716067552564,
+          "std": 0.03340664570611589,
+          "median": 0.4226691275835037,
+          "max": 0.4479541778564453
+        },
+        "first DATES white text": {
+          "mean": 0.35778115957975387,
+          "std": 0.025975256405784176,
+          "median": 0.3686039447784424,
+          "max": 0.3857913613319397
+        },
+        "white text on dark background": {
+          "mean": 0.2408122205734253,
+          "std": 0.011494775455169753,
+          "median": 0.23866058886051178,
+          "max": 0.26557108759880066
+        },
+        "TV show title": {
+          "mean": 0.27217113703489304,
+          "std": 0.008146816339308917,
+          "median": 0.27287885546684265,
+          "max": 0.2886674106121063
+        },
+        "dating show logo": {
+          "mean": 0.3292430454492569,
+          "std": 0.018631674254369967,
+          "median": 0.3356247842311859,
+          "max": 0.35311442613601685
+        },
+        "reality TV show": {
+          "mean": 0.24157480046153068,
+          "std": 0.009608967829805828,
+          "median": 0.2446642965078354,
+          "max": 0.26485562324523926
+        },
+        "German TV show": {
+          "mean": 0.22975968211889267,
+          "std": 0.006467062038715715,
+          "median": 0.22904765605926514,
+          "max": 0.2453862875699997
+        },
+        "dating program": {
+          "mean": 0.3027564367651939,
+          "std": 0.021609011679944827,
+          "median": 0.3125211298465729,
+          "max": 0.3258025050163269
+        },
+        "television branding": {
+          "mean": 0.21406412705779077,
+          "std": 0.006662378445577374,
+          "median": 0.2135312259197235,
+          "max": 0.23593175411224365
+        },
+        "white typography": {
+          "mean": 0.20652876943349838,
+          "std": 0.012534809386317873,
+          "median": 0.20687097311019897,
+          "max": 0.24638894200325012
+        },
+        "show title text": {
+          "mean": 0.2720534586906433,
+          "std": 0.006042596341889852,
+          "median": 0.27214081585407257,
+          "max": 0.28580161929130554
+        },
+        "first DATES TV show": {
+          "mean": 0.3541823062300682,
+          "std": 0.02968503349949684,
+          "median": 0.36559683084487915,
+          "max": 0.3838012218475342
+        },
+        "dating reality show": {
+          "mean": 0.2861204123497009,
+          "std": 0.015948346216988766,
+          "median": 0.29141485691070557,
+          "max": 0.31026771664619446
+        }
+      }
+    }
+  },
+  "all_queries": [
+    "first dates",
+    "first dates logo",
+    "first DATES white text",
+    "white text on dark background",
+    "TV show title",
+    "dating show logo",
+    "reality TV show",
+    "German TV show",
+    "dating program",
+    "television branding",
+    "white typography",
+    "show title text",
+    "first DATES TV show",
+    "dating reality show"
+  ],
+  "baseline_queries": [
+    "first dates",
+    "first dates logo"
+  ],
+  "new_queries": [
+    "first DATES white text",
+    "white text on dark background",
+    "TV show title",
+    "dating show logo",
+    "reality TV show",
+    "German TV show",
+    "dating program",
+    "television branding",
+    "white typography",
+    "show title text",
+    "first DATES TV show",
+    "dating reality show"
+  ]
+}
