@@ -1,0 +1,24 @@
+{
+  "name": "onnx-benchmark",
+  "version": "1.0.0",
+  "description": "Browser-based ONNX model benchmarking tool",
+  "main": "run-benchmark.js",
+  "scripts": {
+    "start": "node run-benchmark.js",
+    "benchmark": "node run-benchmark.js",
+    "benchmark:mobilenet": "node run-benchmark.js mobilenet",
+    "benchmark:mobilenetv4": "node run-benchmark.js mobilenetv4",
+    "benchmark:base": "node run-benchmark.js base"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
+  "keywords": [
+    "onnx",
+    "benchmark",
+    "performance",
+    "machine-learning"
+  ],
+  "author": "",
+  "license": "MIT"
+}
