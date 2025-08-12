@@ -1,14 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONNX Model Benchmark</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 </head>
 <body>
-    <div id="status">Loading...</div>
-    <div id="results"></div>
     
     <script>
         // Parse URL parameters
@@ -46,22 +41,7 @@
 
         // Update status
         function updateStatus(message) {
-            document.getElementById('status').textContent = message;
             console.log(message);
-        }
-
-        // Display results
-        function displayResults(results) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = `
-                <h2>Benchmark Results for ${results.modelName}</h2>
-                <p><strong>Total Images:</strong> ${results.totalImages}</p>
-                <p><strong>Accuracy:</strong> ${(results.accuracy * 100).toFixed(2)}%</p>
-                <p><strong>Average Latency:</strong> ${results.avgLatency.toFixed(2)}ms</p>
-                <p><strong>Median Latency:</strong> ${results.medianLatency.toFixed(2)}ms</p>
-                <p><strong>95th Percentile Latency:</strong> ${results.p95Latency.toFixed(2)}ms</p>
-                <p><strong>Total Time:</strong> ${results.totalLatency.toFixed(2)}ms</p>
-            `;
         }
 
         // Load and preprocess image
@@ -186,7 +166,6 @@
 
             window.benchmarkState.results[modelName] = results;
             updateStatus(`${modelName} benchmark complete!`);
-            displayResults(results);
             
             // Signal completion to Playwright
             window.benchmarkComplete = true;

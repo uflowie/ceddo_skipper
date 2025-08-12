@@ -1,114 +1,12 @@
 const { chromium } = require('playwright');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-
-async function checkServerHealth(port, maxRetries = 10) {
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            await new Promise((resolve, reject) => {
-                const req = http.get(`http://localhost:${port}/`, (res) => {
-                    resolve();
-                });
-                req.on('error', reject);
-                req.setTimeout(1000, () => {
-                    req.destroy();
-                    reject(new Error('Timeout'));
-                });
-            });
-            return true;
-        } catch (error) {
-            console.log(`Server health check ${i + 1}/${maxRetries} failed, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-    }
-    return false;
-}
-
-function createSimpleServer(serverPort) {
-    const mimeTypes = {
-        '.html': 'text/html',
-        '.js': 'text/javascript',
-        '.css': 'text/css',
-        '.json': 'application/json',
-        '.png': 'image/png',
-        '.jpg': 'image/jpg',
-        '.gif': 'image/gif',
-        '.onnx': 'application/octet-stream'
-    };
-
-    const server = http.createServer((req, res) => {
-        console.log('Request for:', req.url);
-
-        // Parse URL to remove query parameters
-        const url = new URL(req.url, `http://localhost:${serverPort}`);
-        const pathname = url.pathname;
-        
-        let filePath = '';
-        
-        if (pathname === '/') {
-            filePath = path.join(__dirname, 'benchmark.html');
-        } else if (pathname.startsWith('/models/') || pathname.startsWith('/data/')) {
-            filePath = path.join(__dirname, pathname.substring(1));
-        } else {
-            filePath = path.join(__dirname, pathname.substring(1));
-        }
-
-        const extname = String(path.extname(filePath)).toLowerCase();
-        const mimeType = mimeTypes[extname] || 'application/octet-stream';
-
-        fs.readFile(filePath, (error, content) => {
-            if (error) {
-                if (error.code === 'ENOENT') {
-                    console.log('File not found:', filePath);
-                    res.writeHead(404, { 'Content-Type': 'text/html' });
-                    res.end('<h1>404 Not Found</h1>', 'utf-8');
-                } else {
-                    console.log('Server error:', error.code);
-                    res.writeHead(500);
-                    res.end('Server Error: ' + error.code);
-                }
-            } else {
-                res.writeHead(200, { 
-                    'Content-Type': mimeType,
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-                });
-                res.end(content, 'utf-8');
-            }
-        });
-    });
-
-    return server;
-}
 
 async function runBenchmark(modelName = 'mobilenet') {
     console.log(`Starting ONNX benchmark for model: ${modelName}`);
     
     const port = 3001;
-    let server;
     let browser;
     
     try {
-        // Start the server
-        console.log('Starting HTTP server...');
-        server = createSimpleServer(port);
-        
-        await new Promise((resolve) => {
-            server.listen(port, () => {
-                console.log(`Server running at http://localhost:${port}/`);
-                resolve();
-            });
-        });
-        
-        // Wait for server to be ready
-        console.log('Waiting for server to be ready...');
-        const serverReady = await checkServerHealth(port);
-        if (!serverReady) {
-            throw new Error('Server failed to start');
-        }
-        
         // Launch browser
         console.log('Launching browser...');
         browser = await chromium.launch({ 
@@ -161,10 +59,6 @@ async function runBenchmark(modelName = 'mobilenet') {
         if (browser) {
             console.log('Closing browser...');
             await browser.close();
-        }
-        if (server) {
-            console.log('Stopping server...');
-            server.close();
         }
     }
 }
