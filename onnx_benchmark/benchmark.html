@@ -18,12 +18,8 @@
             targetModel: modelParam
         };
 
-        // Model configurations
-        const MODELS = {
-            'base': '/models/trained_model.onnx',
-            'mobilenet': '/models/trained_model_mobilenet.onnx', 
-            'mobilenetv4': '/models/trained_model_mobilenetv4.onnx'
-        };
+        // Construct model path from the model parameter
+        const getModelPath = (modelName) => `/models/${modelName}.onnx`;
 
         // Test images with labels (0 = no, 1 = yes)
         const TEST_IMAGES = [
@@ -179,12 +175,10 @@
                 updateStatus('Initializing benchmark...');
                 
                 const targetModel = window.benchmarkState.targetModel;
-                if (!MODELS[targetModel]) {
-                    throw new Error(`Unknown model: ${targetModel}`);
-                }
+                const modelPath = getModelPath(targetModel);
                 
                 // Load only the target model
-                await loadModel(targetModel, MODELS[targetModel]);
+                await loadModel(targetModel, modelPath);
                 
                 updateStatus(`Model loaded. Starting benchmark for ${targetModel}...`);
                 
