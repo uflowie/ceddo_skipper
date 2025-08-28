@@ -50,67 +50,75 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
         const skipAheadVideo = iframe.contentDocument.querySelector('video');
         skipAheadVideo.playbackRate = 16;
         let currentSkipInterval = null;
-        let lastFrameTime = 0;
+        let lastSkipState = null;
+        let seekingBackward = false;
+        let transitionStartTime = null;
 
-        const processVideoFrame = () => {
+        const videoFrameCallback = (_, { mediaTime }) => {
             if (originalUrl !== window.location.href || video.ended) {
                 iframe.remove();
                 return;
             }
 
-            // Check if video is ready, if not wait 1ms and try again
-            if (skipAheadVideo.readyState < 3 || skipAheadVideo.paused) {
-                setTimeout(processVideoFrame, 1);
+            if (skipAheadVideo.ended && currentSkipInterval) {
+                currentSkipInterval.end = skipAheadVideo.duration || mediaTime;
+                console.debug(`[Ceddo Skipper]: Video ended, closed skip interval at ${currentSkipInterval.end}s`);
+                currentSkipInterval = null;
                 return;
             }
 
-            const mediaTime = skipAheadVideo.currentTime;
+            if (skipAheadVideo.readyState < 3) {
+                skipAheadVideo.requestVideoFrameCallback(videoFrameCallback);
+                return;
+            }
 
-            // if we took the first frame where we should skip as the start of the interval
-            // we would still be showing this frame to the user. to try to prevent this, we
-            // instead store the time of the last frame before that and use that as the start
-            // of the interval
-            const tmp = lastFrameTime;
-            lastFrameTime = mediaTime;
-
-            if (shouldSkip(skipAheadVideo)) {
-                if (!currentSkipInterval) {
-                    currentSkipInterval = { start: tmp, end: undefined };
-                    skipIntervals.push(currentSkipInterval);
-                    console.debug(`[Ceddo Skipper]: Started new skip interval at ${mediaTime}s`);
+            if (seekingBackward) {
+                const currentSkipState = shouldSkip(skipAheadVideo);
+                
+                if (currentSkipState !== lastSkipState) {
+                    // Found the exact transition point
+                    if (currentSkipState && !currentSkipInterval) {
+                        // Transition from no-skip to skip: start new interval
+                        currentSkipInterval = { start: mediaTime, end: undefined };
+                        skipIntervals.push(currentSkipInterval);
+                        console.debug(`[Ceddo Skipper]: Started new skip interval at ${mediaTime}s`);
+                    } else if (!currentSkipState && currentSkipInterval) {
+                        // Transition from skip to no-skip: end current interval
+                        currentSkipInterval.end = mediaTime;
+                        console.debug(`[Ceddo Skipper]: Ended skip interval at ${mediaTime}s`);
+                        currentSkipInterval = null;
+                    }
+                    
+                    seekingBackward = false;
+                    skipAheadVideo.currentTime = transitionStartTime;
+                    skipAheadVideo.play();
+                } else {
+                    // Continue seeking backward
+                    const backwardKeyEvent = new KeyboardEvent('keydown', { key: ',' });
+                    skipAheadVideo.dispatchEvent(backwardKeyEvent);
                 }
-            } else {
-                if (currentSkipInterval) {
-                    currentSkipInterval.end = mediaTime;
-                    console.debug(`[Ceddo Skipper]: Ended skip interval at ${mediaTime}s`);
-                    currentSkipInterval = null;
-                }
+                
+                skipAheadVideo.requestVideoFrameCallback(videoFrameCallback);
+                return;
             }
 
-            // we can't directly check for the end of the video, because on the last frameCallback,
-            // the video will not have ended, we therefore use this heuristic to close the last
-            // interval of the video
-            const isNearEnd = skipAheadVideo.duration && (mediaTime >= skipAheadVideo.duration - 1);
+            const currentSkipState = shouldSkip(skipAheadVideo);
 
-            if (isNearEnd && currentSkipInterval) {
-                currentSkipInterval.end = skipAheadVideo.duration || mediaTime;
-                console.debug(`[Ceddo Skipper]: Video ended/near end, closed skip interval at ${currentSkipInterval.end}s`);
-                currentSkipInterval = null;
+            if (lastSkipState !== null && currentSkipState !== lastSkipState) {
+                // Transition detected - start backward seeking
+                seekingBackward = true;
+                transitionStartTime = mediaTime;
+                skipAheadVideo.pause();
+                
+                const backwardKeyEvent = new KeyboardEvent('keydown', { key: ',' });
+                skipAheadVideo.dispatchEvent(backwardKeyEvent);
             }
-            else {
-                // dispatch synthetic "." key event to advance exactly one frame
-                const keyEvent = new KeyboardEvent('keydown', {
-                    key: '.',
-                    bubbles: true,
-                    cancelable: true
-                });
-                skipAheadVideo.dispatchEvent(keyEvent);
 
-                setTimeout(processVideoFrame, 1);
-            }
+            lastSkipState = currentSkipState;
+            skipAheadVideo.requestVideoFrameCallback(videoFrameCallback);
         };
 
-        processVideoFrame();
+        skipAheadVideo.requestVideoFrameCallback(videoFrameCallback);
     }
 }
 
