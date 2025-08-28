@@ -52,19 +52,11 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
         let currentSkipInterval = null;
         let lastFrameTime = 0;
 
-        const processVideoFrame = () => {
+        const skipAheadVideoFrameCallback = (_, { mediaTime }) => {
             if (originalUrl !== window.location.href || video.ended) {
                 iframe.remove();
                 return;
             }
-
-            // Check if video is ready, if not wait 1ms and try again
-            if (skipAheadVideo.readyState < 3 || skipAheadVideo.paused) {
-                setTimeout(processVideoFrame, 1);
-                return;
-            }
-
-            const mediaTime = skipAheadVideo.currentTime;
 
             // if we took the first frame where we should skip as the start of the interval
             // we would still be showing this frame to the user. to try to prevent this, we
@@ -98,19 +90,11 @@ function findSkipIntervals(video, skipIntervals, originalUrl) {
                 currentSkipInterval = null;
             }
             else {
-                // dispatch synthetic "." key event to advance exactly one frame
-                const keyEvent = new KeyboardEvent('keydown', {
-                    key: '.',
-                    bubbles: true,
-                    cancelable: true
-                });
-                skipAheadVideo.dispatchEvent(keyEvent);
-
-                setTimeout(processVideoFrame, 1);
+                skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
             }
         };
 
-        processVideoFrame();
+        skipAheadVideo.requestVideoFrameCallback(skipAheadVideoFrameCallback);
     }
 }
 
