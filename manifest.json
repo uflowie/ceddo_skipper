@@ -5,11 +5,15 @@
   "description": "A Chrome extension for skipping content",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://*.youtube.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [
